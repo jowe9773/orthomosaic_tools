@@ -18,8 +18,8 @@ if __name__ == "__main__":
     COMPRESSION = 4
     SPEED = 1
     START_TIME = 0
-    LENGTH = 10
-    OUT_NAME = "test.mp4"
+    LENGTH = 708
+    OUT_NAME = "test_full.mp4"
 
     #load video files:
     vid1 = ff.load_fn("Select video from camera 1")

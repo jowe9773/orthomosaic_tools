@@ -3,12 +3,12 @@
 #gcp_selection.py
 
 """This file will contain the code that opens a GUI based GCP selection tool."""
-
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 import csv
 import cv2
 from PIL import Image, ImageTk
+
 
 class TargetWidget(ttk.Frame):
     def __init__(self, master=None, variable=None, value=None, app=None, entry_width=5):
@@ -66,6 +66,7 @@ class TargetWidget(ttk.Frame):
             return [target, x, y]
         return [target, "", ""]
 
+
 class ImageViewer(tk.Frame):
     def __init__(self, master=None, app=None):
         super().__init__(master)
@@ -99,7 +100,6 @@ class ImageViewer(tk.Frame):
             self.image = Image.open(filepath)
 
         if ".MP4" in filepath:
-
             cap = cv2.VideoCapture(filepath)
             cap.set(cv2.CAP_PROP_POS_FRAMES, 5)
             ret, frame = cap.read()
@@ -107,8 +107,8 @@ class ImageViewer(tk.Frame):
             if ret:
                 self.image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             else:
-                print("Frame couldnt be opened")
-        
+                print("Frame couldn't be opened")
+
         self.img_pos = (0, 0)
         self.fit_image_to_window()
         self.update_image()
@@ -141,11 +141,7 @@ class ImageViewer(tk.Frame):
             if coordinates:
                 x, y = coordinates
                 scaled_x, scaled_y = int(x * self.scale + self.img_pos[0]), int(y * self.scale + self.img_pos[1])
-                # Determine color based on active state
-                if self.app.radio_variable.get() == index:
-                    color = "red"
-                else:
-                    color = "blue"
+                color = "red" if self.app.radio_variable.get() == index else "blue"
                 self.canvas.create_oval(scaled_x - 3, scaled_y - 3, scaled_x + 3, scaled_y + 3, fill=color, outline=color, tags="points")
 
     def on_double_click(self, event):
@@ -174,6 +170,7 @@ class ImageViewer(tk.Frame):
         self.scale *= scale_factor
         self.img_pos = (self.img_pos[0] - offset_x, self.img_pos[1] - offset_y)
         self.update_image()
+
 
 class App(tk.Tk):
     def __init__(self):
@@ -211,58 +208,59 @@ class App(tk.Tk):
         save_btn = ttk.Button(control_panel, text="Save Target Coordinates", command=self.save_targets)
         save_btn.pack(pady=5)
 
+        load_btn = ttk.Button(control_panel, text="Load Target Coordinates", command=self.load_targets)
+        load_btn.pack(pady=5)
+
+        self.radio_variable = tk.IntVar()
+        self.radio_variable.set(-1)  # No target selected by default
         self.target_widgets = []
-        self.radio_variable = tk.IntVar(value=-1)  # Shared variable for all radio buttons
-
-        # Scrollable frame for target widgets
-        self.scroll_canvas = tk.Canvas(control_panel)
-        self.scroll_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=5)
-
-        scrollbar = ttk.Scrollbar(control_panel, orient="vertical", command=self.scroll_canvas.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.scroll_frame = ttk.Frame(self.scroll_canvas)
-        self.scroll_canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
-        self.scroll_frame.bind("<Configure>", self.on_frame_configure)
-
-        self.scroll_canvas.configure(yscrollcommand=scrollbar.set)
-
-    def on_frame_configure(self, event):
-        self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
-
-    def set_active(self, target_index):
-        self.image_viewer.active_target = target_index
-        self.radio_variable.set(target_index)  # Update the shared radio variable
-        self.image_viewer.draw_points()  # Redraw points when active target changes
-
-    def update_coordinates(self, target_index, x, y):
-        self.target_widgets[target_index].update_coordinates(x, y)
-        self.image_viewer.draw_points()
 
     def add_target(self):
-        target_widget = TargetWidget(self.scroll_frame, variable=self.radio_variable, value=len(self.target_widgets), app=self)
-        target_widget.pack(fill=tk.X, pady=5, padx=5)
+        value = len(self.target_widgets)
+        target_widget = TargetWidget(self.control_panel, variable=self.radio_variable, value=value, app=self)
+        target_widget.pack(padx=5, pady=5)
         self.target_widgets.append(target_widget)
-        self.radio_variable.set(len(self.target_widgets) - 1)
-        self.set_active(len(self.target_widgets) - 1)
+
+    def update_coordinates(self, target_index, x, y):
+        if 0 <= target_index < len(self.target_widgets):
+            self.target_widgets[target_index].update_coordinates(x, y)
+
+    def set_active(self, target_index):
+        if 0 <= target_index < len(self.target_widgets):
+            self.image_viewer.active_target = target_index
 
     def save_targets(self):
-        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv")
+        if filepath:
+            with open(filepath, mode="w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["Target", "X Pixels", "Y Pixels"])
+                for target_widget in self.target_widgets:
+                    writer.writerow(target_widget.get_target_data())
+
+    def load_targets(self):
+        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         if not filepath:
             return
 
-        try:
-            with open(filepath, 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(["Target", "XPixels", "YPixels"])
-                for target_widget in self.target_widgets:
-                    writer.writerow(target_widget.get_target_data())
-            messagebox.showinfo("Save Successful", f"Target coordinates saved to {filepath}")
-        except Exception as e:
-            messagebox.showerror("Save Failed", f"An error occurred while saving the file: {e}")
+        with open(filepath, mode="r") as file:
+            reader = csv.reader(file)
+            next(reader)  # Skip the header
+
+            # Remove existing target widgets
+            for target_widget in self.target_widgets:
+                target_widget.destroy()
+            self.target_widgets.clear()
+
+            # Create target widgets based on CSV and populate them
+            for row in reader:
+                target_name, x_pixels, y_pixels = row[0], row[1], row[2]
+                self.add_target()
+                self.target_widgets[-1].target_entry.insert(0, target_name)
+                self.target_widgets[-1].xpixels_entry.insert(0, x_pixels)
+                self.target_widgets[-1].ypixels_entry.insert(0, y_pixels)
+
 
 if __name__ == "__main__":
     app = App()
-    app.update_idletasks()
-    app.image_viewer.fit_image_to_window()
     app.mainloop()
