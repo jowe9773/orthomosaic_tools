@@ -41,8 +41,6 @@ if __name__ == "__main__":
     for i, gcps in enumerate(gcpss):
         gcps = ff.import_gcps(gcps)
         targets.append(gcps)
-    
-    print(targets)
 
     #choose an output location for the final video
     out_vid_dn = ff.load_dn("Select output location for the final video")
@@ -77,7 +75,7 @@ if __name__ == "__main__":
     for i, vid in enumerate(videos):
         homography = vf.find_homography(i+1, targets[i])
         homo_mats.append(homography)
-        vf.calculate_reprojection_error(targets, homography)
+        vf.calculate_reprojection_error(targets[i], homography)
 
     #Open capture for each video stream
     captures = []
