@@ -75,7 +75,6 @@ if __name__ == "__main__":
     for i, vid in enumerate(videos):
         homography = vf.find_homography(i+1, targets[i])
         homo_mats.append(homography)
-        vf.calculate_reprojection_error(targets[i], homography)
 
     #Open capture for each video stream
     captures = []

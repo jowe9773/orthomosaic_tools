@@ -169,28 +169,6 @@ class Video_Functions():
         h_matrix = cv2.findHomography(src_pts, dst_pts)
 
         return h_matrix[0]
-    
-    def calculate_reprojection_error(self, gcps, homography_matrix):
-        # Convert to float32 numpy arrays
-        img_pts = np.array(gcps[1], dtype=np.float32)
-        rw_pts = np.array(gcps[0], dtype=np.float32)
-
-        # Add a third dimension to the image points (homogeneous coordinates)
-        img_pts = np.column_stack((img_pts, np.ones((img_pts.shape[0], 1))))
-
-        # Apply homography to the source points
-        projected_pts = homography_matrix @ img_pts.T
-
-        # Normalize the projected points by dividing by the third coordinate
-        projected_pts = projected_pts[:2] / projected_pts[2]
-
-        # Calculate the Euclidean distance between actual and projected points
-        errors = np.linalg.norm(rw_pts.T - projected_pts, axis=0)
-
-        # Return the average error (or median error, sum, etc.)
-        mean_error = np.mean(errors)
-        print(f"Reprojection Error: {mean_error}")
-        return mean_error
 
     def frame_to_umat_frame(self, frame):
         uframe = cv2.UMat(frame)
