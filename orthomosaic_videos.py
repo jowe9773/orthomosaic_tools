@@ -18,8 +18,11 @@ if __name__ == "__main__":
     COMPRESSION = 4
     SPEED = 1
     START_TIME = 0
-    LENGTH = 708
+    LENGTH = 30
     OUT_NAME = "test_full.mp4"
+
+    #define the range of x values that will be used in calculating the error (from 0 to the width of each frame, which in the case of our flume is 2438mm)
+    x_range = (0, 2348)
 
     #load video files:
     vid1 = ff.load_fn("Select video from camera 1")
@@ -75,6 +78,7 @@ if __name__ == "__main__":
     for i, vid in enumerate(videos):
         homography = vf.find_homography(i+1, targets[i])
         homo_mats.append(homography)
+        vf.calculate_reprojection_error(targets[i], homography, x_range = x_range, cam = i)
 
     #Open capture for each video stream
     captures = []

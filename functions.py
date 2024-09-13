@@ -169,6 +169,58 @@ class Video_Functions():
         h_matrix = cv2.findHomography(src_pts, dst_pts)
 
         return h_matrix[0]
+    
+    def calculate_reprojection_error(self, gcps, homography_matrix, x_range=None, cam=0):
+        """
+        Calculate the reprojection error given ground control points and a homography matrix.
+        
+        Args:
+            gcps (tuple): A tuple containing two sets of points. 
+                        gcps[0] - Real-world points (x, y)
+                        gcps[1] - Image points (x, y)
+            homography_matrix (numpy array): 3x3 Homography matrix for transformation.
+            x_range (tuple, optional): A tuple specifying the range of x coordinates (min_x, max_x) to filter the real-world points.
+        
+        Returns:
+            float: Mean reprojection error for the selected points.
+        """
+
+        # Convert to float32 numpy arrays
+        img_pts = np.array(gcps[1], dtype=np.float32)
+        rw_pts = np.array(gcps[0], dtype=np.float32)
+
+        # Add a third dimension to the image points (homogeneous coordinates)
+        img_pts = np.column_stack((img_pts, np.ones((img_pts.shape[0], 1))))
+
+        # Apply homography to the source points
+        projected_pts = homography_matrix @ img_pts.T
+
+        # Normalize the projected points by dividing by the third coordinate
+        projected_pts = projected_pts[:2] / projected_pts[2]
+
+        # Transpose projected points for easier manipulation (back to Nx2)
+        projected_pts = projected_pts.T
+        
+        # If an x_range is provided, filter points based on the real-world x coordinate
+        if x_range is not None:
+            min_x, max_x = x_range
+            # Create a mask based on the x-coordinates of real-world points
+            mask = (rw_pts[:, 0] >= min_x) & (rw_pts[:, 0] <= max_x)
+            
+            # Apply the mask to real-world points
+            rw_pts = rw_pts[mask]
+            
+            # Apply the same mask to the corresponding projected points
+            projected_pts = projected_pts[mask]
+
+        # Calculate the Euclidean distance between actual and projected points
+        errors = np.linalg.norm(rw_pts - projected_pts, axis=1)
+
+        # Return the average error
+        mean_error = np.mean(errors)
+        print(f"Reprojection Error for cam {cam+1}: {mean_error}")
+        
+        return mean_error
 
     def frame_to_umat_frame(self, frame):
         uframe = cv2.UMat(frame)

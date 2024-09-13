@@ -113,16 +113,13 @@ if __name__ == "__main__":
         gcps = ff.import_gcps(gcps)
         targets.append(gcps)
 
-        print("GCPS as it goes into targets list: ", gcps[0])
 
         #Generate homography matricies
     homo_mats = []
     for i, target in enumerate(targets):
-        print("Target as as the for loop begins:", target[0])
         x_range = (0, 2438)
 
         homography = vf.find_homography(i+1, target)
         homo_mats.append(homography)
 
-        print("Target after homography happens: ", target[0])
         calculate_reprojection_error(target, homography, x_range = x_range, cam = i)
