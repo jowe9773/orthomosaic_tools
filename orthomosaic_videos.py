@@ -3,6 +3,7 @@
 "import packages and modules"
 import time
 import asyncio
+from pprint import pprint
 import cv2
 from functions import File_Functions, Video_Functions, Audio_Functions
 
@@ -75,10 +76,12 @@ if __name__ == "__main__":
 
     #Generate homography matricies
     homo_mats = []
+    reprojection_errors = []
     for i, vid in enumerate(videos):
         homography = vf.find_homography(i+1, targets[i])
         homo_mats.append(homography)
-        vf.calculate_reprojection_error(targets[i], homography, x_range = x_range, cam = i)
+        error = vf.calculate_reprojection_error(targets[i], homography, x_range = x_range, cam = i)
+        reprojection_errors.append(error)
 
     #Open capture for each video stream
     captures = []
@@ -97,3 +100,4 @@ if __name__ == "__main__":
 
     print(f"Total time taken: {elapsed_time:.2f} seconds")
     print(f"Time taken to process frames: {video_time:.2f} seconds")
+    pprint(reprojection_errors)
