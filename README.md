@@ -25,5 +25,12 @@ Now zoom in on a target in the image and double click to place the marker at the
 
 Above, if the user were to double click in a new location on the image, the red point on the image would move to the new location and the x and y pixel values would change in target "c" in the menu.
 
+Once all of the targets have been added and you are satisfied, save the points by clicking on the **Save Target Coordinates** button. Navigate the file explorer to the folder where you would like to save the target coordinates, add a logical file name (eg. 20240529_exp1_Cam1_targets.csv"), and save the file. This will save the coordinates as a csv file (see image below) which you can then go into and add the corresponding real world coordinates to. 
+
+![example_output](https://github.com/user-attachments/assets/0107a286-421a-4ad5-8a3f-196a4c60f2a8)
+
+When adding the real world coordinates to this file, use column names shown in the image below.
+![image](https://github.com/user-attachments/assets/d1fd17fa-c1ca-4b65-a946-2d6794ee7f49)
+
 
 ## Orthorectifying Videos
