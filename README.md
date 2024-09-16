@@ -1,10 +1,7 @@
 # Orthomosaic_Tools
-This repository contains programs to orthomosaic videos from 4 overhead cameras. 
+I built this toolbox to orthorectify videos from 4 nadir cameras above the Riverine Basin at the St. Anthony Falls Laboratory in order to create videos that covered the entire spatial extent of my experiments. Using this program, there are two parts in orthorectifying the video streams. First, extracting the pixel coordinates of targets on an image or video from each camera. This allows us to compute a "homography matrix" which in turn allows us to warp the image to remove lens distortion and camera position effects. Second, using these targets to compute homography matrix, apply the homography matricies to each cameras video stream, and stitching them together into the final product. Below, I go through how to use the programs in this repository to complete these two steps. 
 
-## Downloading and Setting Up These Programs
-
-
-## Selecting Targets
+## Part One: Selecting Targets
 In order to orthorectify the videos on each camera and line them up in space, the x and y pixel coordinates of targets within each cameras frame must be known and related to real world coordinates. Included in this repository is a program to find the pixel locations of targets with an image or video stream (as long and the targets are not moving in relation to the camera). To use it, run the file "*gcp_selector.py*". When you do this, a gui will open up and look like the image below. This window can be resized as needed for your computer. 
 
 ![gcp_selector_gui_open](https://github.com/user-attachments/assets/bd62185f-203f-42fc-aa06-11f1561e43b3)
@@ -32,7 +29,10 @@ Once all of the targets have been added and you are satisfied, save the points b
 When adding the real world coordinates to this file, use column names shown in the image below.
 ![image](https://github.com/user-attachments/assets/d1fd17fa-c1ca-4b65-a946-2d6794ee7f49)
 
-You can also add points from a file to edit their locations without starting from scrath. To do this, you can upload a csv file with the above columns. Keep in mind that when it saves, it will only save the image coordinates and you will have to add in the real world coordinates again before using the file in the orthorecitfication code. 
+You can also add points from a file to edit their locations without starting from scrath. To do this, you can upload a csv file with the above columns. Keep in mind that when it saves, it will only save the image coordinates and you will have to add in the real world coordinates again before using the file in the orthorecitfication code. Note that you may be able to use a single set of target files for all of your experiments. Unless the camera or the targets are physically moved or the camera settings are chagned, the relative position of the targets and the camera do not change, so the pixel locations of targets in the image from each camera are also not going to change.
 
 
-## Orthorectifying Videos
+## Part Two: Orthorectifying Videos
+Once you have your target files (which relate image coordinates of targets to real world coordinates of targets), you can run the main program included in this repository. To run this program, we first need to change a few settings within the script (I did not make a GUI for this program, so there is a little bit of script editing that you will need to do). To start, open the "*orthomosaic_videos.py*" file. This file is 104 lines of code long, but as a user, the only lines you are interested in are lines 18-23. This is where are the imput variables are housed. 
+
+![variables_to_edit](https://github.com/user-attachments/assets/919c25de-c4bc-440e-82f4-cf4728f13f4b)
