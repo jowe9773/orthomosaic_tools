@@ -32,5 +32,7 @@ Once all of the targets have been added and you are satisfied, save the points b
 When adding the real world coordinates to this file, use column names shown in the image below.
 ![image](https://github.com/user-attachments/assets/d1fd17fa-c1ca-4b65-a946-2d6794ee7f49)
 
+You can also add points from a file to edit their locations without starting from scrath. To do this, you can upload a csv file with the above columns. Keep in mind that when it saves, it will only save the image coordinates and you will have to add in the real world coordinates again before using the file in the orthorecitfication code. 
+
 
 ## Orthorectifying Videos
