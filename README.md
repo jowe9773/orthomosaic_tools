@@ -36,3 +36,16 @@ You can also add points from a file to edit their locations without starting fro
 Once you have your target files (which relate image coordinates of targets to real world coordinates of targets), you can run the main program included in this repository. To run this program, we first need to change a few settings within the script (I did not make a GUI for this program, so there is a little bit of script editing that you will need to do). To start, open the "*orthomosaic_videos.py*" file. This file is 104 lines of code long, but as a user, the only lines you are interested in are lines 18-23. This is where are the imput variables are housed. 
 
 ![variables_to_edit](https://github.com/user-attachments/assets/919c25de-c4bc-440e-82f4-cf4728f13f4b)
+
+**COMPRESSION**: factor by which to downsample the image to reduce final image size. This needs to be greater than 1.75 in order for the program to work. A compression of 4 means that each pixel is 4x the original pixel size (resolution is 1/4 of the original resolution).
+The original resolution creates an image with a pixel size of about 1mm. 
+
+**SPEED**: factor by which the output video is sped up. A speed of 1 is real speed. A speed of 2 is twice as fast. 
+
+**START_TIME**: The time in seconds (of the upstream most video) at which you want the video to start processing. 
+
+**LENGTH**: The length in seconds of the processed segment. If speed is 1 then this will also be the length of the output video. 
+
+**OUT_NAME**: The name of the output video file. INCLUDE .mp4 at the end.
+
+Once you have set these parameters, then you can run the program. The first thing that will happen is that it will ask you to select a video from Camera 1 (the upstream most camera), then it will ask for a video for Camera 2, and so on. The file explorer that pops up will say what it wants you to select in the top right corner. Once all of the videos are selected, it will then ask for your gcps files for each camera (in order from 1 to 4). These are the target files that you made in part one. Finally, it will ask you to choose a location/folder where it will store the output video. Once all of these things have been entered, it will start working though the data processing. First it will line the videos up in time using the audio. Then it will find the homography and start working through the videos frame by frame. For the fastest processing, this should be done exclusively on your local drive (not reading/writing to an external hard drive), but you can transfer to other location if you have to. 
