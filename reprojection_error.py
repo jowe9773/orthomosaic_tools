@@ -53,7 +53,7 @@ def calculate_reprojection_error(gcps, homography_matrix, x_range=None, cam=0):
     print(f"Reprojection Error: {mean_error}")
 
     # Call the function to visualize points
-    visualize_points(rw_pts, projected_pts, title="Camera 1 Reprojection")
+    visualize_points(rw_pts, projected_pts, title= "Reprojection Visualization")
     
     return mean_error
 
