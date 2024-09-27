@@ -8,7 +8,7 @@ This setup guide assumes that you already have an anaconda distribution on your 
 
 If this ran smoothly, then you are ready to start using the program. If not, there was likely an issue when trying to install packages from different channels. Try loosening the channel priority by running:
 
-'''> conda config --set channel_priority flexible```
+```> conda config --set channel_priority flexible```
 
 and this should solve any channel based problems. Run the 1st command again and you should be ready to go!
 
