@@ -1,6 +1,9 @@
 # Orthomosaic_Tools
 I built this toolbox to orthorectify videos from 4 nadir cameras above the Riverine Basin at the St. Anthony Falls Laboratory in order to create videos that covered the entire spatial extent of my experiments. Using this program, there are two parts in orthorectifying the video streams. First, extracting the pixel coordinates of targets on an image or video from each camera. This allows us to compute a "homography matrix" which in turn allows us to warp the image to remove lens distortion and camera position effects. Second, using these targets to compute homography matrix, apply the homography matricies to each cameras video stream, and stitching them together into the final product. Below, I go through how to use the programs in this repository to complete these two steps. 
 
+## Setup
+To start, download the entire orthomosaic_tools repository to a folder in your local drive. 
+
 ## Part One: Selecting Targets
 In order to orthorectify the videos on each camera and line them up in space, the x and y pixel coordinates of targets within each cameras frame must be known and related to real world coordinates. Included in this repository is a program to find the pixel locations of targets with an image or video stream (as long and the targets are not moving in relation to the camera). To use it, run the file "*gcp_selector.py*". When you do this, a gui will open up and look like the image below. This window can be resized as needed for your computer. 
 
