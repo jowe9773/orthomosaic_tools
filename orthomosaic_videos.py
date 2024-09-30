@@ -18,9 +18,9 @@ if __name__ == "__main__":
     #define important variables
     COMPRESSION = 4
     SPEED = 1
-    START_TIME = 0
-    LENGTH = 30
-    OUT_NAME = "test_full.mp4"
+    START_TIME = 634
+    LENGTH = 70
+    OUT_NAME = "20240621_exp2_autoc_PIV.mp4"
 
     #define the range of x values that will be used in calculating the error (from 0 to the width of each frame, which in the case of our flume is 2438mm)
     x_range = (0, 2348)

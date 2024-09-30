@@ -101,7 +101,7 @@ class ImageViewer(tk.Frame):
 
         if ".MP4" in filepath:
             cap = cv2.VideoCapture(filepath)
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 5)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 300)
             ret, frame = cap.read()
             cap.release()
             if ret:
