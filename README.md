@@ -4,7 +4,7 @@ I built this toolbox to orthorectify videos from 4 nadir cameras above the River
 ## Setup
 This setup guide assumes that you already have an anaconda distribution on your computer. If you dont, go ahead and set it up and make sure that it is added to your path. Download the entire orthomosaic_tools repository to a folder in your local drive. Next, create a new conda environment from the included **orthoenv.yml** file. To do this, open a terminal in the directory where you put the orthomosaic_tools repository. Then, run the following command:
 
-```> conda env create - orthoenv.yml```
+```> conda env create -f orthoenv.yml```
 
 If this ran smoothly, then you are ready to start using the program. If not, there was likely an issue when trying to install packages from different channels. Try loosening the channel priority by running:
 
