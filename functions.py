@@ -278,7 +278,7 @@ class Video_Functions():
         def process_frame(cap, homo_mat, black_frame, capture_index, capture_indices):
             # Read the next frame from the video capture
             ret, frame = cap.read()
-
+                  
             # Check if the frame is valid
             if frame is None or frame.size == 0:
                 # If we're within the first 5 seconds, return a black frame
