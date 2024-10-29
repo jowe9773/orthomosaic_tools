@@ -1,9 +1,7 @@
 import cv2
 import tkinter as tk
-from tkinter import filedialog
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
-import numpy as np
 
 class VideoPlayer:
     def __init__(self, root):
@@ -25,7 +23,6 @@ class VideoPlayer:
         self.paused = False
         self.current_frame = 0
         self.playback_speed = 1.0  # Default playback speed multiplier
-        self.first_frame_gray = None  # To store the grayscale of the first frame
 
         # Video display label
         self.display_label = tk.Label(root, bg="black")
@@ -78,11 +75,6 @@ class VideoPlayer:
             self.current_frame = 0
             self.paused = False  # Ensure video starts unpaused
 
-            # Read the first frame and convert to grayscale
-            ret, first_frame = self.cap.read()
-            if ret:
-                self.first_frame_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
-
     def update_speed(self, value):
         # Update playback speed based on slider value
         self.playback_speed = float(value)
@@ -115,19 +107,9 @@ class VideoPlayer:
                 # Update current frame position
                 self.current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
 
-                # Convert current frame to grayscale
-                current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-                # Calculate the difference between current frame grayscale and first frame grayscale
-                if self.first_frame_gray is not None:
-                    difference_frame = cv2.absdiff(current_frame_gray, self.first_frame_gray)
-
-                # Stack the color frame and the difference frame
-                stacked_frame = cv2.vconcat([frame, cv2.cvtColor(difference_frame, cv2.COLOR_GRAY2BGR)])
-
                 # Scale video to match current window dimensions
-                scale_factor = min(self.display_width / stacked_frame.shape[1], self.display_height / stacked_frame.shape[0])
-                resized_frame = cv2.resize(stacked_frame, (int(stacked_frame.shape[1] * scale_factor), int(stacked_frame.shape[0] * scale_factor)), interpolation=cv2.INTER_AREA)
+                scale_factor = min(self.display_width / frame.shape[1], self.display_height / frame.shape[0])
+                resized_frame = cv2.resize(frame, (int(frame.shape[1] * scale_factor), int(frame.shape[0] * scale_factor)), interpolation=cv2.INTER_AREA)
 
                 # Convert frame to ImageTk format and display
                 image = Image.fromarray(cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB))
