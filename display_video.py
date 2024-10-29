@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 from PIL import Image, ImageTk
-import time
+import numpy as np
 
 class VideoPlayer:
     def __init__(self, root):
@@ -15,14 +15,13 @@ class VideoPlayer:
         self.display_height = 720
 
         # Set initial window size
-        self.root.geometry(f"{self.display_width + 200}x{self.display_height + 80}")  # Extra space for slider
+        self.root.geometry(f"{self.display_width + 200}x{self.display_height}")
         self.root.minsize(800, 600)
 
         # Video player attributes
         self.video_path = None
         self.cap = None
         self.frame_rate = 30  # Default frame rate
-        self.total_frames = 0
         self.paused = False
         self.current_frame = 0
         self.playback_speed = 1.0  # Default playback speed multiplier
@@ -32,26 +31,13 @@ class VideoPlayer:
         self.display_label = tk.Label(root, bg="black")
         self.display_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Progress slider for video playback, with label on the right
-        slider_frame = tk.Frame(root)
-        slider_frame.grid(row=1, column=0, sticky="ew", padx=10)
-
-        self.progress_slider = tk.Scale(slider_frame, from_=0, to=100, orient=tk.HORIZONTAL, command=self.on_slider_change)
-        self.progress_slider.grid(row=0, column=0, sticky="ew")
-
-        self.progress_slider_label = tk.Label(slider_frame, text="00:00:00 / 00:00:00")
-        self.progress_slider_label.grid(row=0, column=1, padx=(10, 0))  # Add padding for spacing
-
-        # Configure the grid layout to expand with window resizing
-        slider_frame.grid_columnconfigure(0, weight=1)
-
         # Configure the grid layout to expand with window resizing
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
         # Control panel on the right
         self.control_panel = tk.Frame(root)
-        self.control_panel.grid(row=0, column=1, sticky="ns", padx=10, pady=10, rowspan=2)
+        self.control_panel.grid(row=0, column=1, sticky="ns", padx=10, pady=10)
 
         # Open video button
         open_button = tk.Button(self.control_panel, text="Open Video", command=self.open_video)
@@ -62,7 +48,7 @@ class VideoPlayer:
         self.play_pause_button.pack(pady=10)
 
         # Playback speed slider
-        self.speed_slider = tk.Scale(self.control_panel, from_=0.1, to=10.0, resolution=0.1, orient=tk.HORIZONTAL, label="Playback Speed", command=self.update_speed)
+        self.speed_slider = tk.Scale(self.control_panel, from_=0.1, to=20.0, resolution=0.1, orient=tk.HORIZONTAL, label="Playback Speed", command=self.update_speed)
         self.speed_slider.set(1.0)  # Default speed
         self.speed_slider.pack(pady=10)
 
@@ -86,28 +72,16 @@ class VideoPlayer:
             if not self.cap.isOpened():
                 messagebox.showerror("Error", "Could not open video.")
                 return
-
-            # Get frame rate, total frames, and reset frame position
+            
+            # Get frame rate and reset frame position
             self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS) or 30
-            self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            self.progress_slider.config(to=self.total_frames)
             self.current_frame = 0
             self.paused = False  # Ensure video starts unpaused
-
-            # Calculate and display total video duration
-            total_duration = self.total_frames / self.frame_rate
-            self.update_progress_slider_label(0, total_duration)
 
             # Read the first frame and convert to grayscale
             ret, first_frame = self.cap.read()
             if ret:
                 self.first_frame_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
-
-    def update_progress_slider_label(self, current_time, total_time):
-        # Format time as hour:minute:second
-        current_time_str = time.strftime('%H:%M:%S', time.gmtime(current_time))
-        total_time_str = time.strftime('%H:%M:%S', time.gmtime(total_time))
-        self.progress_slider_label.config(text=f"{current_time_str} / {total_time_str}")
 
     def update_speed(self, value):
         # Update playback speed based on slider value
@@ -117,9 +91,8 @@ class VideoPlayer:
         # Skip frames forward or backward by a specified number of seconds
         if self.cap and self.cap.isOpened():
             self.current_frame += int(seconds * self.frame_rate)
-            self.current_frame = max(0, min(self.current_frame, self.total_frames - 1))
+            self.current_frame = max(0, self.current_frame)
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
-            self.progress_slider.set(self.current_frame)
 
     def toggle_play_pause(self):
         # Toggle play/pause state
@@ -130,14 +103,8 @@ class VideoPlayer:
         # Adjust display dimensions to match the resized window, keeping space for control panel
         if event.widget == self.root:
             new_width = max(event.width - 200, 1)
-            new_height = max(event.height - 80, 1)  # Allow space for slider
+            new_height = max(event.height, 1)
             self.display_width, self.display_height = new_width, new_height
-
-    def on_slider_change(self, value):
-        # Jump to a specific frame when the slider is moved
-        if self.cap and self.cap.isOpened():
-            self.current_frame = int(value)
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
 
     def update_video(self):
         # Display video frames
@@ -147,39 +114,29 @@ class VideoPlayer:
             if ret:
                 # Update current frame position
                 self.current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
-                self.progress_slider.set(self.current_frame)
 
-                # Update progress slider label with the current playback time
-                current_time = self.current_frame / self.frame_rate
-                total_time = self.total_frames / self.frame_rate
-                self.update_progress_slider_label(current_time, total_time)
+                # Convert current frame to grayscale
+                current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-                # Calculate aspect ratio and scaling to fit within display dimensions
-                frame_height, frame_width = frame.shape[:2]
-                aspect_ratio = frame_width / frame_height
+                # Calculate the difference between current frame grayscale and first frame grayscale
+                if self.first_frame_gray is not None:
+                    difference_frame = cv2.absdiff(current_frame_gray, self.first_frame_gray)
 
-                # Calculate new dimensions that preserve aspect ratio
-                if self.display_width / self.display_height > aspect_ratio:
-                    # Window is wider than video; use height to calculate width
-                    new_height = self.display_height
-                    new_width = int(new_height * aspect_ratio)
-                else:
-                    # Window is taller than video; use width to calculate height
-                    new_width = self.display_width
-                    new_height = int(new_width / aspect_ratio)
+                # Stack the color frame and the difference frame
+                stacked_frame = cv2.vconcat([frame, cv2.cvtColor(difference_frame, cv2.COLOR_GRAY2BGR)])
 
-                # Resize frame to match new dimensions while preserving aspect ratio
-                frame_resized = cv2.resize(frame, (new_width, new_height))
+                # Scale video to match current window dimensions
+                scale_factor = min(self.display_width / stacked_frame.shape[1], self.display_height / stacked_frame.shape[0])
+                resized_frame = cv2.resize(stacked_frame, (int(stacked_frame.shape[1] * scale_factor), int(stacked_frame.shape[0] * scale_factor)), interpolation=cv2.INTER_AREA)
 
-                # Convert resized frame to ImageTk format and display
-                image = Image.fromarray(cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB))
+                # Convert frame to ImageTk format and display
+                image = Image.fromarray(cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB))
                 image_tk = ImageTk.PhotoImage(image=image)
                 self.display_label.config(image=image_tk)
                 self.display_label.image = image_tk  # Keep a reference to avoid garbage collection
             else:
                 # Loop video back to the start if at the end
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                self.progress_slider.set(0)
 
         # Schedule next frame update with adjusted speed
         self.root.after(int(1000 / (self.frame_rate * self.playback_speed)), self.update_video)
