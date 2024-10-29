@@ -44,7 +44,7 @@ class VideoPlayer:
 
         # Configure the grid layout to expand with window resizing
         slider_frame.grid_columnconfigure(0, weight=1)
-        
+
         # Configure the grid layout to expand with window resizing
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
@@ -62,7 +62,7 @@ class VideoPlayer:
         self.play_pause_button.pack(pady=10)
 
         # Playback speed slider
-        self.speed_slider = tk.Scale(self.control_panel, from_=0.1, to=20.0, resolution=0.1, orient=tk.HORIZONTAL, label="Playback Speed", command=self.update_speed)
+        self.speed_slider = tk.Scale(self.control_panel, from_=0.1, to=10.0, resolution=0.1, orient=tk.HORIZONTAL, label="Playback Speed", command=self.update_speed)
         self.speed_slider.set(1.0)  # Default speed
         self.speed_slider.pack(pady=10)
 
