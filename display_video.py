@@ -15,13 +15,14 @@ class VideoPlayer:
         self.display_height = 720
 
         # Set initial window size
-        self.root.geometry(f"{self.display_width + 200}x{self.display_height}")
+        self.root.geometry(f"{self.display_width + 200}x{self.display_height + 80}")  # Extra space for slider
         self.root.minsize(800, 600)
 
         # Video player attributes
         self.video_path = None
         self.cap = None
         self.frame_rate = 30  # Default frame rate
+        self.total_frames = 0
         self.paused = False
         self.current_frame = 0
         self.playback_speed = 1.0  # Default playback speed multiplier
@@ -31,13 +32,17 @@ class VideoPlayer:
         self.display_label = tk.Label(root, bg="black")
         self.display_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
+        # Progress slider for video playback
+        self.progress_slider = tk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL, command=self.on_slider_change)
+        self.progress_slider.grid(row=1, column=0, sticky="ew", padx=10)
+
         # Configure the grid layout to expand with window resizing
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
         # Control panel on the right
         self.control_panel = tk.Frame(root)
-        self.control_panel.grid(row=0, column=1, sticky="ns", padx=10, pady=10)
+        self.control_panel.grid(row=0, column=1, sticky="ns", padx=10, pady=10, rowspan=2)
 
         # Open video button
         open_button = tk.Button(self.control_panel, text="Open Video", command=self.open_video)
@@ -72,9 +77,11 @@ class VideoPlayer:
             if not self.cap.isOpened():
                 messagebox.showerror("Error", "Could not open video.")
                 return
-            
-            # Get frame rate and reset frame position
+
+            # Get frame rate, total frames, and reset frame position
             self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS) or 30
+            self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            self.progress_slider.config(to=self.total_frames)
             self.current_frame = 0
             self.paused = False  # Ensure video starts unpaused
 
@@ -91,8 +98,9 @@ class VideoPlayer:
         # Skip frames forward or backward by a specified number of seconds
         if self.cap and self.cap.isOpened():
             self.current_frame += int(seconds * self.frame_rate)
-            self.current_frame = max(0, self.current_frame)
+            self.current_frame = max(0, min(self.current_frame, self.total_frames - 1))
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
+            self.progress_slider.set(self.current_frame)
 
     def toggle_play_pause(self):
         # Toggle play/pause state
@@ -103,8 +111,14 @@ class VideoPlayer:
         # Adjust display dimensions to match the resized window, keeping space for control panel
         if event.widget == self.root:
             new_width = max(event.width - 200, 1)
-            new_height = max(event.height, 1)
+            new_height = max(event.height - 80, 1)  # Allow space for slider
             self.display_width, self.display_height = new_width, new_height
+
+    def on_slider_change(self, value):
+        # Jump to a specific frame when the slider is moved
+        if self.cap and self.cap.isOpened():
+            self.current_frame = int(value)
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
 
     def update_video(self):
         # Display video frames
@@ -114,6 +128,7 @@ class VideoPlayer:
             if ret:
                 # Update current frame position
                 self.current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+                self.progress_slider.set(self.current_frame)
 
                 # Convert current frame to grayscale
                 current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -137,6 +152,7 @@ class VideoPlayer:
             else:
                 # Loop video back to the start if at the end
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                self.progress_slider.set(0)
 
         # Schedule next frame update with adjusted speed
         self.root.after(int(1000 / (self.frame_rate * self.playback_speed)), self.update_video)
