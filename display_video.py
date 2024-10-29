@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 from PIL import Image, ImageTk
+import numpy as np
 
 class VideoPlayer:
     def __init__(self, root):
@@ -23,6 +24,8 @@ class VideoPlayer:
         self.frame_rate = 30  # Default frame rate
         self.paused = False
         self.current_frame = 0
+        self.playback_speed = 1.0  # Default playback speed multiplier
+        self.first_frame_gray = None  # To store the grayscale of the first frame
 
         # Video display label
         self.display_label = tk.Label(root, bg="black")
@@ -44,6 +47,11 @@ class VideoPlayer:
         self.play_pause_button = tk.Button(self.control_panel, text="Pause", command=self.toggle_play_pause)
         self.play_pause_button.pack(pady=10)
 
+        # Playback speed slider
+        self.speed_slider = tk.Scale(self.control_panel, from_=0.1, to=20.0, resolution=0.1, orient=tk.HORIZONTAL, label="Playback Speed", command=self.update_speed)
+        self.speed_slider.set(1.0)  # Default speed
+        self.speed_slider.pack(pady=10)
+
         # Skip control buttons
         tk.Button(self.control_panel, text="<< 10 sec", command=lambda: self.skip(-10)).pack(pady=5)
         tk.Button(self.control_panel, text="<< 1 sec", command=lambda: self.skip(-1)).pack(pady=5)
@@ -52,7 +60,7 @@ class VideoPlayer:
 
         # Bind resizing event
         self.root.bind("<Configure>", self.on_resize)
-        
+
         # Start video playback loop
         self.update_video()
 
@@ -70,10 +78,14 @@ class VideoPlayer:
             self.current_frame = 0
             self.paused = False  # Ensure video starts unpaused
 
-    def toggle_play_pause(self):
-        # Toggle play/pause state
-        self.paused = not self.paused
-        self.play_pause_button.config(text="Play" if self.paused else "Pause")
+            # Read the first frame and convert to grayscale
+            ret, first_frame = self.cap.read()
+            if ret:
+                self.first_frame_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
+
+    def update_speed(self, value):
+        # Update playback speed based on slider value
+        self.playback_speed = float(value)
 
     def skip(self, seconds):
         # Skip frames forward or backward by a specified number of seconds
@@ -81,6 +93,11 @@ class VideoPlayer:
             self.current_frame += int(seconds * self.frame_rate)
             self.current_frame = max(0, self.current_frame)
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
+
+    def toggle_play_pause(self):
+        # Toggle play/pause state
+        self.paused = not self.paused
+        self.play_pause_button.config(text="Play" if self.paused else "Pause")
 
     def on_resize(self, event):
         # Adjust display dimensions to match the resized window, keeping space for control panel
@@ -98,10 +115,15 @@ class VideoPlayer:
                 # Update current frame position
                 self.current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
 
-                # Convert to grayscale, stack, and resize to fit display area
-                gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                gray_frame = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2BGR)
-                stacked_frame = cv2.vconcat([frame, gray_frame])
+                # Convert current frame to grayscale
+                current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+                # Calculate the difference between current frame grayscale and first frame grayscale
+                if self.first_frame_gray is not None:
+                    difference_frame = cv2.absdiff(current_frame_gray, self.first_frame_gray)
+
+                # Stack the color frame and the difference frame
+                stacked_frame = cv2.vconcat([frame, cv2.cvtColor(difference_frame, cv2.COLOR_GRAY2BGR)])
 
                 # Scale video to match current window dimensions
                 scale_factor = min(self.display_width / stacked_frame.shape[1], self.display_height / stacked_frame.shape[0])
@@ -116,8 +138,8 @@ class VideoPlayer:
                 # Loop video back to the start if at the end
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-        # Schedule next frame update
-        self.root.after(int(1000 / self.frame_rate), self.update_video)
+        # Schedule next frame update with adjusted speed
+        self.root.after(int(1000 / (self.frame_rate * self.playback_speed)), self.update_video)
 
 # Set up main application window
 root = tk.Tk()
