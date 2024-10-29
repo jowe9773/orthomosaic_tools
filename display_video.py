@@ -2,6 +2,7 @@ import cv2
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
+import numpy as np
 
 class VideoPlayer:
     def __init__(self, root):
@@ -55,6 +56,13 @@ class VideoPlayer:
         tk.Button(self.control_panel, text=">> 1 sec", command=lambda: self.skip(1)).pack(pady=5)
         tk.Button(self.control_panel, text=">> 10 sec", command=lambda: self.skip(10)).pack(pady=5)
 
+        # Time entry box and total duration label
+        self.time_entry = tk.Entry(self.control_panel, width=10, justify="center")
+        self.time_entry.bind("<Return>", self.jump_to_time)
+        self.time_entry.pack(pady=5)
+        self.total_time_label = tk.Label(self.control_panel, text="Total: 00:00:00")
+        self.total_time_label.pack()
+
         # Bind resizing event
         self.root.bind("<Configure>", self.on_resize)
 
@@ -62,7 +70,6 @@ class VideoPlayer:
         self.update_video()
 
     def open_video(self):
-        # Open file dialog to select video
         self.video_path = filedialog.askopenfilename(title="Select Video File", filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")])
         if self.video_path:
             self.cap = cv2.VideoCapture(self.video_path)
@@ -72,58 +79,82 @@ class VideoPlayer:
             
             # Get frame rate and reset frame position
             self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS) or 30
+            self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            self.total_seconds = self.total_frames / self.frame_rate
+
+            # Update total time label
+            total_time_str = self.format_time(self.total_seconds)
+            self.total_time_label.config(text=f"Total: {total_time_str}")
+
+            # Reset the time entry
+            self.time_entry.delete(0, tk.END)
+            self.time_entry.insert(0, "00:00:00")
+
+            # Start video playback
             self.current_frame = 0
-            self.paused = False  # Ensure video starts unpaused
+            self.paused = False
+
+    def format_time(self, seconds):
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        seconds = int(seconds % 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    def jump_to_time(self, event=None):
+        try:
+            time_str = self.time_entry.get()
+            hours, minutes, seconds = map(int, time_str.split(":"))
+            target_seconds = hours * 3600 + minutes * 60 + seconds
+            target_frame = int(target_seconds * self.frame_rate)
+            target_frame = min(max(0, target_frame), self.total_frames - 1)  # Bound the frame within the total frames
+
+            # Set the video to the target frame
+            self.current_frame = target_frame
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
+        except ValueError:
+            messagebox.showerror("Invalid Time Format", "Please enter time in HH:MM:SS format.")
 
     def update_speed(self, value):
-        # Update playback speed based on slider value
         self.playback_speed = float(value)
 
     def skip(self, seconds):
-        # Skip frames forward or backward by a specified number of seconds
         if self.cap and self.cap.isOpened():
             self.current_frame += int(seconds * self.frame_rate)
-            self.current_frame = max(0, self.current_frame)
+            self.current_frame = max(0, min(self.current_frame, self.total_frames - 1))
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
 
     def toggle_play_pause(self):
-        # Toggle play/pause state
         self.paused = not self.paused
         self.play_pause_button.config(text="Play" if self.paused else "Pause")
 
     def on_resize(self, event):
-        # Adjust display dimensions to match the resized window, keeping space for control panel
         if event.widget == self.root:
             new_width = max(event.width - 200, 1)
             new_height = max(event.height, 1)
             self.display_width, self.display_height = new_width, new_height
 
     def update_video(self):
-        # Display video frames
         if self.cap and self.cap.isOpened() and not self.paused:
             ret, frame = self.cap.read()
 
             if ret:
-                # Update current frame position
                 self.current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+                self.time_entry.delete(0, tk.END)
+                self.time_entry.insert(0, self.format_time(self.current_frame / self.frame_rate))
 
-                # Scale video to match current window dimensions
+                # Resize and display frame
                 scale_factor = min(self.display_width / frame.shape[1], self.display_height / frame.shape[0])
                 resized_frame = cv2.resize(frame, (int(frame.shape[1] * scale_factor), int(frame.shape[0] * scale_factor)), interpolation=cv2.INTER_AREA)
 
-                # Convert frame to ImageTk format and display
                 image = Image.fromarray(cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB))
                 image_tk = ImageTk.PhotoImage(image=image)
                 self.display_label.config(image=image_tk)
-                self.display_label.image = image_tk  # Keep a reference to avoid garbage collection
+                self.display_label.image = image_tk
             else:
-                # Loop video back to the start if at the end
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-        # Schedule next frame update with adjusted speed
         self.root.after(int(1000 / (self.frame_rate * self.playback_speed)), self.update_video)
 
-# Set up main application window
 root = tk.Tk()
 app = VideoPlayer(root)
 root.mainloop()
