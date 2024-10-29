@@ -275,22 +275,30 @@ class Video_Functions():
         out = cv2.VideoWriter(out_vid_dn + "/" + OUT_NAME, fourcc, captures_list[0][0].get(cv2.CAP_PROP_FPS) * SPEED, output_shape)
 
         # Function to process each frame
-        def process_frame(cap, homo_mat, black_frame, capture_index, capture_indices):
+        def process_frame(cap, homo_mat, black_frame, capture_index, capture_indices, frame_counters):
             # Read the next frame from the video capture
             ret, frame = cap.read()
-                  
+
             # Check if the frame is valid
             if frame is None or frame.size == 0:
+                print(cap.get(cv2.CAP_PROP_POS_MSEC))
+                print(frame_counters[capture_index])
+
                 # If we're within the first 5 seconds, return a black frame
-                if 0 < cap.get(cv2.CAP_PROP_POS_MSEC) < 5000:
+                if cap.get(cv2.CAP_PROP_POS_MSEC) == 0.0 and frame_counters[capture_index]< 5*24:
+                    # Increment frame counter for this capture
+                    frame_counters[capture_index] += 1
+
                     print(f"Returning black frame due to missing data.")
-                    return black_frame, capture_index  # Return capture index as-is
-                
+                    
+                    return black_frame, capture_index, frame_counters[capture_index]  # Return capture index and frame count as-is
+
                 # Switch to the next capture if we have processed enough frames
                 print(f"Warning: Frame is empty or could not be read. Switching to the next capture.")
 
                 # Increment capture index for this camera
                 capture_indices[capture_index] += 1  # Adjust based on the current camera index
+                
 
                 # Check if there are more captures available for this camera
                 if capture_indices[capture_index] < len(captures_list[capture_index]):
@@ -298,26 +306,31 @@ class Video_Functions():
                     next_capture = captures_list[capture_index][capture_indices[capture_index]]
                     current_caps[capture_index] = next_capture  # Update the global capture list
                     next_ret, next_frame = current_caps[capture_index].read()
+                    frame_counters[capture_index] = 0  # Reset frame counter when switching captures
 
                     if next_ret and next_frame is not None:
                         # If the next frame is valid
                         uframe = cv2.UMat(next_frame)  # Convert frame to UMat for processing
                         corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)  # Apply homography
                         corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
-                        return corrected_frame.get(), capture_index  # Return the processed frame and updated index
+                        return corrected_frame.get(), capture_index, frame_counters[capture_index]  # Return the processed frame and updated index
                     else:
                         print(f"No valid frame in the next capture.")
-                        return black_frame, capture_index  # If the next frame is also invalid, return black frame
-                
+                        return black_frame, capture_index, frame_counters[capture_index]  # If the next frame is also invalid, return black frame
+
                 else:
                     print(f"No more captures left for camera {capture_index}.")
-                    return black_frame, capture_index  # If no more captures, return black frame
+                    return black_frame, capture_index, frame_counters[capture_index]  # If no more captures, return black frame
 
             # If the frame is valid, proceed to process it
             uframe = cv2.UMat(frame)  # Convert frame to UMat for processing
             corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)  # Apply homography
             corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
-            return corrected_frame.get(), capture_index  # Return the processed frame and unchanged index
+
+            # Increment frame counter for this capture
+            frame_counters[capture_index] += 1
+
+            return corrected_frame.get(), capture_index, frame_counters[capture_index]  # Return the processed frame and unchanged index
 
         # Ensure the black frame matches the dimensions and type of the video frames
         def create_black_frame(reference_frame):
@@ -328,6 +341,9 @@ class Video_Functions():
         current_caps = [captures[0] for captures in captures_list]
         capture_indices = [0] * len(captures_list)  # Track which file in each list is being used
         frame_rates = [cap.get(cv2.CAP_PROP_FPS) for cap in current_caps]
+        
+        # Initialize counters to track frames processed per capture
+        frame_counters = [0] * len(captures_list)
 
         # Get first valid frame to determine dimensions and data type for black frame
         ret, first_frame = current_caps[0].read()
@@ -350,14 +366,14 @@ class Video_Functions():
         while count <= LENGTH:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 # Create a list of arguments for each camera's processing
-                args = [(current_caps[i], homo_mats[i], black_frame, i, capture_indices) for i in range(len(current_caps))]
-                
+                args = [(current_caps[i], homo_mats[i], black_frame, i, capture_indices, frame_counters) for i in range(len(current_caps))]
+
                 # Process frames concurrently
                 results = list(executor.map(lambda p: process_frame(*p), args))
 
             # Collect corrected frames and update current captures
             corrected_frames = []
-            for corrected_frame, index in results:
+            for corrected_frame, index, frame_counter in results:
                 corrected_frames.append(corrected_frame)
 
             # If there are valid frames, merge and write them to the output video
