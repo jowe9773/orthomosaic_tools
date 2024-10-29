@@ -40,6 +40,10 @@ class VideoPlayer:
         open_button = tk.Button(self.control_panel, text="Open Video", command=self.open_video)
         open_button.pack(pady=10)
 
+        # Play/Pause button
+        self.play_pause_button = tk.Button(self.control_panel, text="Pause", command=self.toggle_play_pause)
+        self.play_pause_button.pack(pady=10)
+
         # Skip control buttons
         tk.Button(self.control_panel, text="<< 10 sec", command=lambda: self.skip(-10)).pack(pady=5)
         tk.Button(self.control_panel, text="<< 1 sec", command=lambda: self.skip(-1)).pack(pady=5)
@@ -65,6 +69,11 @@ class VideoPlayer:
             self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS) or 30
             self.current_frame = 0
             self.paused = False  # Ensure video starts unpaused
+
+    def toggle_play_pause(self):
+        # Toggle play/pause state
+        self.paused = not self.paused
+        self.play_pause_button.config(text="Play" if self.paused else "Pause")
 
     def skip(self, seconds):
         # Skip frames forward or backward by a specified number of seconds
