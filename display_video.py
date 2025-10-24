@@ -78,7 +78,7 @@ class VideoPlayer:
                 return
             
             # Get frame rate and reset frame position
-            self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS) or 30
+            self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS)
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
             self.total_seconds = self.total_frames / self.frame_rate
 
@@ -144,7 +144,7 @@ class VideoPlayer:
 
                 # Resize and display frame
                 scale_factor = min(self.display_width / frame.shape[1], self.display_height / frame.shape[0])
-                resized_frame = cv2.resize(frame, (int(frame.shape[1] * scale_factor), int(frame.shape[0] * scale_factor)), interpolation=cv2.INTER_AREA)
+                resized_frame = cv2.resize(frame, (int(frame.shape[1] * scale_factor), int(frame.shape[0] * scale_factor)), interpolation=cv2.INTER_LINEAR)
 
                 image = Image.fromarray(cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB))
                 image_tk = ImageTk.PhotoImage(image=image)

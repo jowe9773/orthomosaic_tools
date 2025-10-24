@@ -18,11 +18,11 @@ if __name__ == "__main__":
     vf = Video_Functions()
 
     #define important variables
-    COMPRESSION = 4
+    COMPRESSION = 2.5
     SPEED = 1
     START_TIME = 0
-    LENGTH = 7700
-    OUT_NAME = "20240714_exp1.mp4"
+    LENGTH = 30
+    OUT_NAME = "20240529_exp2.mp4"
 
     #define the range of x values that will be used in calculating the error (from 0 to the width of each frame, which in the case of our flume is 2438mm)
     x_range = (0, 2348)
@@ -108,4 +108,5 @@ if __name__ == "__main__":
 
     print(f"Total time taken: {elapsed_time:.2f} seconds")
     print(f"Time taken to process frames: {video_time:.2f} seconds")
-    pprint(reprojection_errors)
+    print("Reproection errors: ", reprojection_errors)
+    print("Time offsets: ", time_offsets)
