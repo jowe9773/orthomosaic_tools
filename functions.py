@@ -3,6 +3,7 @@
 '''A file that holds all of the functions used in the process of orthomosaicing the video files.'''
 
 #import neccesary packages and modules
+from pathlib import Path
 import csv
 import tkinter as tk
 from tkinter import filedialog
@@ -51,6 +52,41 @@ class File_Functions():
         filename = filedialog.askopenfilename(title = purpose)
 
         return filename
+
+    def get_sorted_video_filenames(self, directory):
+        # Convert the directory to a Path object
+        directory_path = Path(directory)
+        
+        # Get the list of subdirectories (one for each camera)
+        subdirectories = [subdir for subdir in directory_path.iterdir() if subdir.is_dir()]
+        
+        # Initialize a list to store the lists of filenames for each camera
+        camera_files = []
+        
+        # Iterate through each camera subdirectory
+        for subdir in subdirectories:
+            # Get all .MP4 files in the subdirectory and store their full paths
+            mp4_files = [file for file in subdir.iterdir() if file.suffix == ".MP4"]
+            
+            # Sort the filenames based on their name
+            mp4_files.sort()
+            
+            # Add the sorted list of full paths to camera_files
+            camera_files.append([str(file) for file in mp4_files])
+
+        return camera_files
+    
+    def get_gcps_files(self, directory):
+        # Convert directory to Path object
+        directory_path = Path(directory)
+        
+        # Get all CSV files in the directory and sort them alphabetically
+        gcps_files = sorted(directory_path.glob("*.csv"))
+        
+        # Convert Path objects to strings with consistent forward slashes
+        gcps_files = [str(file_path) for file_path in gcps_files]
+        
+        return gcps_files
 
     def import_gcps(self, gcps_fn):
         """module for importing ground control points as lists"""
@@ -226,61 +262,131 @@ class Video_Functions():
         uframe = cv2.UMat(frame)
         return uframe
 
-    def orthomosaicing(self, captures, time_offsets, homo_mats, out_vid_dn, OUT_NAME, SPEED, START_TIME, LENGTH, COMPRESSION):
+    def orthomosaicing(self, captures_list, time_offsets, homo_mats, out_vid_dn, OUT_NAME, SPEED, START_TIME, LENGTH, COMPRESSION):
         # Describe shape
         final_shape = [2438, 4000]
         compressed_shape = (int(final_shape[0] / COMPRESSION), int(final_shape[1] / COMPRESSION))
         output_shape = (compressed_shape[0] * 4, compressed_shape[1])
-        print("out Shape: ", output_shape)
 
-        # Find frame rates for the videos and ensure that they match
-        frame_rates = [cap.get(cv2.CAP_PROP_FPS) for cap in captures]
-        if all(fps == frame_rates[0] for fps in frame_rates):
-            print("All captures have same FPS.")
-        else:
-            print("FPS from all captures do not match. Check and try again.")
-            sys.exit()
+        print("out Shape: ", output_shape)
 
         # Set up video writer
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        out = cv2.VideoWriter(out_vid_dn + "/" + OUT_NAME, fourcc, frame_rates[0] * SPEED, output_shape)
-
-        # Set start frames
-        start_time = START_TIME * 1000
-        for i, cap in enumerate(captures):
-            cap.set(cv2.CAP_PROP_POS_MSEC, start_time + time_offsets[i])
+        out = cv2.VideoWriter(out_vid_dn + "/" + OUT_NAME, fourcc, captures_list[0][0].get(cv2.CAP_PROP_FPS) * SPEED, output_shape)
 
         # Function to process each frame
-        def process_frame(cap, homo_mat):
+        def process_frame(cap, homo_mat, black_frame, capture_index, capture_indices, frame_counters):
+            # Read the next frame from the video capture
             ret, frame = cap.read()
-            if frame is None or frame.size == 0:
-                print(f"Warning: Frame is empty or could not be read.")
-                return None
 
-            # Convert frame to UMat and process
-            uframe = cv2.UMat(frame)
-            corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)
-            corrected_frame = cv2.resize(corrected_frame, compressed_shape)
-            return corrected_frame.get()
+            # Check if the frame is valid
+            if frame is None or frame.size == 0:
+                print(cap.get(cv2.CAP_PROP_POS_MSEC))
+                print(frame_counters[capture_index])
+
+                # If we're within the first 5 seconds, return a black frame
+                if cap.get(cv2.CAP_PROP_POS_MSEC) == 0.0 and frame_counters[capture_index]< 5*24:
+                    # Increment frame counter for this capture
+                    frame_counters[capture_index] += 1
+
+                    print(f"Returning black frame due to missing data.")
+                    
+                    return black_frame, capture_index, frame_counters[capture_index]  # Return capture index and frame count as-is
+
+                # Switch to the next capture if we have processed enough frames
+                print(f"Warning: Frame is empty or could not be read. Switching to the next capture.")
+
+                # Increment capture index for this camera
+                capture_indices[capture_index] += 1  # Adjust based on the current camera index
+                
+
+                # Check if there are more captures available for this camera
+                if capture_indices[capture_index] < len(captures_list[capture_index]):
+                    # Load the next capture
+                    next_capture = captures_list[capture_index][capture_indices[capture_index]]
+                    current_caps[capture_index] = next_capture  # Update the global capture list
+                    next_ret, next_frame = current_caps[capture_index].read()
+                    frame_counters[capture_index] = 0  # Reset frame counter when switching captures
+
+                    if next_ret and next_frame is not None:
+                        # If the next frame is valid
+                        uframe = cv2.UMat(next_frame)  # Convert frame to UMat for processing
+                        corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)  # Apply homography
+                        corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
+                        return corrected_frame.get(), capture_index, frame_counters[capture_index]  # Return the processed frame and updated index
+                    else:
+                        print(f"No valid frame in the next capture.")
+                        return black_frame, capture_index, frame_counters[capture_index]  # If the next frame is also invalid, return black frame
+
+                else:
+                    print(f"No more captures left for camera {capture_index}.")
+                    return black_frame, capture_index, frame_counters[capture_index]  # If no more captures, return black frame
+
+            # If the frame is valid, proceed to process it
+            uframe = cv2.UMat(frame)  # Convert frame to UMat for processing
+            corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)  # Apply homography
+            corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
+
+            # Increment frame counter for this capture
+            frame_counters[capture_index] += 1
+
+            return corrected_frame.get(), capture_index, frame_counters[capture_index]  # Return the processed frame and unchanged index
+
+        # Ensure the black frame matches the dimensions and type of the video frames
+        def create_black_frame(reference_frame):
+            black_frame = np.zeros(reference_frame.shape, dtype=reference_frame.dtype)
+            return black_frame
+
+        # Initialize variables for tracking current capture and file
+        current_caps = [captures[0] for captures in captures_list]
+        capture_indices = [0] * len(captures_list)  # Track which file in each list is being used
+        frame_rates = [cap.get(cv2.CAP_PROP_FPS) for cap in current_caps]
+        
+        # Initialize counters to track frames processed per capture
+        frame_counters = [0] * len(captures_list)
+
+        # Get first valid frame to determine dimensions and data type for black frame
+        ret, first_frame = current_caps[0].read()
+        if not ret or first_frame is None:
+            print("Error: Could not read the first frame.")
+            sys.exit()
+        first_frame_resized = cv2.resize(first_frame, compressed_shape)
+        black_frame = create_black_frame(first_frame_resized)  # Black frame now matches other frames
+
+        # Reset start position after reading the first frame
+        start_time = START_TIME * 1000
+        for i, cap in enumerate(current_caps):
+            cap.set(cv2.CAP_PROP_POS_MSEC, start_time + time_offsets[i])
+
+        # Initialize processed frames count
+        frames_processed = [0] * len(captures_list)
 
         # Process frames in parallel
         count = 0
         while count <= LENGTH:
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                corrected_frames = list(executor.map(process_frame, captures, homo_mats))
+                # Create a list of arguments for each camera's processing
+                args = [(current_caps[i], homo_mats[i], black_frame, i, capture_indices, frame_counters) for i in range(len(current_caps))]
 
-            # Filter out any None frames
-            corrected_frames = [f for f in corrected_frames if f is not None]
+                # Process frames concurrently
+                results = list(executor.map(lambda p: process_frame(*p), args))
 
+            # Collect corrected frames and update current captures
+            corrected_frames = []
+            for corrected_frame, index, frame_counter in results:
+                corrected_frames.append(corrected_frame)
+
+            # If there are valid frames, merge and write them to the output video
             if corrected_frames:
                 merged = cv2.hconcat(corrected_frames)
                 out.write(merged)
 
             count += 1 / frame_rates[0]
-            print(count)
+            print(f"Processed {count} seconds.")
 
-        # Release video capture and writer objects
-        for cap in captures:
-            cap.release()
+        # Release all captures and writer objects at the end
+        for cap in current_caps:
+            if cap:
+                cap.release()
         out.release()
         cv2.destroyAllWindows()
