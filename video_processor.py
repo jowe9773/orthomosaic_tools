@@ -45,16 +45,6 @@ class VideoProcessor:
 
             yield frame, frame_count
 
-            # Check if user requested exit or pause
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key == ord('p'):
-                paused = not paused
-            if cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) < 1:
-                print("Window closed by user")
-                break
-
             frame_count += 1
     
     def layout_frames(self, frames):
@@ -120,71 +110,41 @@ class VideoProcessor:
 
         return concated
     
+
     def view(self, window_name, frame):
-        """
-        Display a frame in a resizable OpenCV window while maintaining its aspect ratio.
 
-        The function scales the input frame to fit within the current window size,
-        preserving the original aspect ratio. The scaled frame is centered on a black
-        canvas matching the window size.
-
-        Parameters
-        ----------
-        window_name : str
-            Name of the OpenCV window where the frame will be displayed.
-        frame : ndarray
-            The image frame to display. Can be grayscale (2D array) or color (3D array).
-
-        Returns
-        -------
-        None
-            The function displays the frame in the specified window and does not return a value.
-
-        Notes
-        -----
-        - Uses `cv2.getWindowImageRect` to obtain the current window size. If unavailable,
-        the frame size is used.
-        - Maintains aspect ratio by scaling the frame to fit within the window.
-        - Centers the resized frame on a black canvas of the window's dimensions.
-        - Supports both grayscale and color frames.
-        - Calls `cv2.imshow` to update the window display.
-
-        Example
-        -------
-        view_layout('My Window', frame)
-        """
-        self.window_name = window_name
-
-        # Make window resizable
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
         frame_h, frame_w = frame.shape[:2]
 
-        # Get current window size
+        # Try to get the window size
         try:
             x, y, win_w, win_h = cv2.getWindowImageRect(window_name)
-        except AttributeError:
+        except:
             win_w, win_h = frame_w, frame_h
 
-        # Compute scaling factor to maintain aspect ratio
+        # If window is minimized or not ready, pick fallback
+        if win_w < 2 or win_h < 2:
+            win_w, win_h = frame_w, frame_h
+
+        # Compute scaling factor
         scale = min(win_w / frame_w, win_h / frame_h)
-        new_w = int(frame_w * scale)
-        new_h = int(frame_h * scale)
+        new_w = max(int(frame_w * scale), 1)
+        new_h = max(int(frame_h * scale), 1)
 
         # Resize frame
         resized_frame = cv2.resize(frame, (new_w, new_h))
 
-        # Create a black canvas of window size
+        # Create black canvas
         if len(frame.shape) == 2:
             canvas = np.zeros((win_h, win_w), dtype=frame.dtype)
         else:
             canvas = np.zeros((win_h, win_w, frame.shape[2]), dtype=frame.dtype)
 
-        # Compute top-left corner for centering
+        # Center it
         y_offset = (win_h - new_h) // 2
         x_offset = (win_w - new_w) // 2
 
-        # Place the resized frame onto the canvas
         canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized_frame
 
         cv2.imshow(window_name, canvas)
