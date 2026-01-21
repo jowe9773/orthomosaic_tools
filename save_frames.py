@@ -3,30 +3,46 @@
 from video_processor import VideoProcessor
 from collections import deque
 import cv2
+from pathlib import Path
 
 
 if __name__ == "__main__":
-    videofiles = ["C:/Users/jwelsh/Image Annotation/20240529_Video_to_Frames/20240529_exp2_1.mp4"]
 
-    out_path = "C:/Users/jwelsh/Image Annotation/20240529_Video_to_Frames/Frames"
+    main_path = "C:/Users/jwelsh/Image Annotation/Frames for target annotation/"
+    
+    videofiles = [
+                  main_path + "2.0/GX010134.MP4",
+                  main_path + "2.0/GX010176.MP4",
+                  main_path + "4.0/GX010165.MP4",
+                  main_path + "4.0/GX010182.MP4",
+                  main_path + "4.0/GX010225.MP4",
+                  main_path + "4.0/GX020225.MP4"]
+
+    out_path = main_path + "Frames"
 
     for i, videofile in enumerate(videofiles): #iterate through the list of videofiles
 
+        video_name = Path(videofile).stem
+        print(video_name)
+        
         video = VideoProcessor(videofile) #open the file as a videoprocessor object
 
         rolling_buffer = deque()
-        n = 24 #choose the number of frames between each save
+        n = 500 #choose the number of frames between each save
         frames_saved = 0 #start counter of the number of frames saved
 
+        
+
         for frame, index in video.frames():
-            print(index)
             if index % n != 0:
                 continue  # skip frames that are not every nth
 
-            # Save the frame as an image
-            output_path = out_path + "/" + "20240529_exp2_1" + "_" + str(index) + ".jpg"
+            # Save the frame as an imagex
+            output_path = out_path + "/" + video_name + "_" + str(index) + ".jpg"
             cv2.imwrite(output_path, frame)
             print(f"Frame {index} saved to {output_path}")
+            frames_saved += 1
+            print(frames_saved)
 
-        video.cap.release()
-        cv2.destroyAllWindows()
+            if frames_saved >= 32:
+                break

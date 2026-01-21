@@ -1,25 +1,53 @@
 #import neccesary packages and modules
-"import packages and modules"
-import os
-from pathlib import Path
-import time
-import asyncio
-from pprint import pprint
+import pandas as pd
 import cv2
-from functions_chunks import File_Functions, Video_Functions, Audio_Functions
 
-#instantiate classes as neccesary
-ff = File_Functions()
+#video file from camera 1 to open first frame
+cam1_vid = "C:/Users/jwelsh/Image Annotation/20240529_Video_to_Frames/SAFL_Cam1/GX060169.MP4"
 
-#get gcps files containing the starting positions 
-gcps_directory = ff.load_dn("select directory containing gcps files.")
-gcps_filenames = ff.get_gcps_files(gcps_directory)
-print(gcps_filenames)
-
-targets = []
-for i, gcps in enumerate(gcps_filenames):
-    gcps = ff.import_gcps(gcps)
-    targets.append(gcps)
+#gcps file from first camera
+cam1_gcps = "C:/Users/jwelsh/Image Annotation/20240529_Video_to_Frames/Cam1_gcps.csv"
 
 
-print(targets)
+#load gcps into pandas dataframe
+gcps_df = pd.read_csv(cam1_gcps)
+print(gcps_df)
+
+#load first valid frame of video 
+# Open the video
+cap = cv2.VideoCapture(cam1_vid)
+
+if not cap.isOpened():
+    print("Error: Could not open video.")
+    exit()
+
+first_frame = None
+
+# Loop until we find the first valid frame
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("No valid frames found in the video.")
+        break
+    if frame is not None:
+        first_frame = frame
+        break
+
+cap.release()
+
+# Display the frame in a smaller window
+if first_frame is not None:
+    # Create a resizable window
+    cv2.namedWindow("First Frame", cv2.WINDOW_NORMAL)
+    
+    # Resize the window (width, height)
+    cv2.resizeWindow("First Frame", 640, 360)
+    
+    cv2.imshow("First Frame", first_frame)
+    
+    while True:
+        key = cv2.waitKey(1) & 0xFF
+        if key == 27:  # ESC key
+            break
+    cv2.destroyAllWindows()
+
