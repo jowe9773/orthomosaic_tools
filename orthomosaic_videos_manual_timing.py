@@ -1,13 +1,14 @@
 #learning_async.py
 
 "import packages and modules"
-import os
 from pathlib import Path
 import time
-import asyncio
-from pprint import pprint
 import cv2
 from functions import File_Functions, Video_Functions, Audio_Functions
+
+
+#define a orthomosaic video function that will process a single experiment
+
 
 
 if __name__ == "__main__":
@@ -21,8 +22,9 @@ if __name__ == "__main__":
     COMPRESSION = 2.5
     SPEED = 1
     START_TIME = 0
-    LENGTH = 60
-    OUT_NAME = "20240626_end_frame.mp4"
+    LENGTH = 400
+    OUT_NAME = "20240708_exp1_long.mp4"
+
 
     #define the range of x values that will be used in calculating the error (from 0 to the width of each frame, which in the case of our flume is 2438mm)
     x_range = (0, 2348)
@@ -53,11 +55,12 @@ if __name__ == "__main__":
     # Start measuring time
     start_time = time.time()
 
-    off_1 = 350
-    off_2 = 100
-    off_3 =0
+    off_1 = 6600                  #if video from downstream cam is late, add time
+    off_2 = 7500                  #if video from downstream cam is early, subtract time
+    off_3 = 8500                  #value is in milliseconds
+
     #Generate time offsets using the first video from each camera
-    time_offsets = [0, 46666.712018140584+off_1, 41010.13605442176+off_1+off_2, 29615.94104308389+off_1+off_2+off_3]
+    time_offsets = [0, 0+off_1, 0+off_1+off_2, 0+off_1+off_2+off_3]
     print("Time offsets for video streams:")
     print(time_offsets)
 

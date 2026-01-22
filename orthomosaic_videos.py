@@ -2,10 +2,8 @@
 
 "import packages and modules"
 import os
-from pathlib import Path
 import time
 import asyncio
-from pprint import pprint
 import cv2
 from functions import File_Functions, Video_Functions, Audio_Functions
 
@@ -21,8 +19,8 @@ if __name__ == "__main__":
     COMPRESSION = 2.5
     SPEED = 1
     START_TIME = 360
-    LENGTH = 2
-    OUT_NAME = "20240529_exp2_test_2.mp4"
+    LENGTH = 30
+    OUT_NAME = "20240708_exp1_test_wrong_gcps.mp4"
 
     #define the range of x values that will be used in calculating the error (from 0 to the width of each frame, which in the case of our flume is 2438mm)
     x_range = (0, 2348)
@@ -46,6 +44,8 @@ if __name__ == "__main__":
     for i, gcps in enumerate(gcps_filenames):
         gcps = ff.import_gcps(gcps)
         targets.append(gcps)
+
+    print(targets)
 
     #choose an output location for the final video
     out_vid_dn = ff.load_dn("Select output location for the final video")
