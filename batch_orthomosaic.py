@@ -22,7 +22,6 @@ offsets_csv_fn = "F:/Videos/time_offsets_v1.csv"
 
 offsets_df = pd.read_csv(offsets_csv_fn)
 exps = offsets_df["exp_name"].tolist()
-print("exps", exps)
 
 
 for i, exp in enumerate(exps):
@@ -38,7 +37,6 @@ for i, exp in enumerate(exps):
     root = Path(all_gcps_directory)
     matches = [p for p in root.rglob("*") if p.is_dir() and exp_date in p.name]
     gcps_directory = matches[0]
-    print(gcps_directory)
 
     #make a list of GCPS file names for the experiment name
     gcps_filenames = ff.get_gcps_files(gcps_directory)

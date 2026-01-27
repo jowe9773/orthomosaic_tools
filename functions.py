@@ -3,6 +3,7 @@
 '''A file that holds all of the functions used in the process of orthomosaicing the video files.'''
 
 #import neccesary packages and modules
+from tqdm import tqdm
 from pathlib import Path
 import csv
 import tkinter as tk
@@ -363,7 +364,12 @@ class Video_Functions():
 
         # Process frames in parallel
         count = 0
-        while count <= LENGTH:
+        seconds = 0
+
+        print(LENGTH)
+        pbar = tqdm(total = LENGTH*frame_rates[0])
+
+        while seconds <= LENGTH:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 # Create a list of arguments for each camera's processing
                 args = [(current_caps[i], homo_mats[i], black_frame, i, capture_indices, frame_counters) for i in range(len(current_caps))]
@@ -381,8 +387,12 @@ class Video_Functions():
                 merged = cv2.hconcat(corrected_frames)
                 out.write(merged)
 
-            count += 1 / frame_rates[0]
-            print(f"Processed {count} seconds.")
+            count += 1 
+            seconds = count / frame_rates[0]
+
+            pbar.update(1)
+
+        pbar.close()
 
         # Release all captures and writer objects at the end
         for cap in current_caps:
