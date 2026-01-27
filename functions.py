@@ -276,26 +276,25 @@ class Video_Functions():
         out = cv2.VideoWriter(out_vid_dn + "/" + OUT_NAME, fourcc, captures_list[0][0].get(cv2.CAP_PROP_FPS) * SPEED, output_shape)
 
         # Function to process each frame
-        def process_frame(cap, homo_mat, black_frame, capture_index, capture_indices, frame_counters):
-            # Read the next frame from the video capture
-            ret, frame = cap.read()
+        def process_frame(camera, cap, homo_mat, black_frame, capture_index, capture_indices, frame_counters):
+            ret, frame = cap.read() #advance the frame
 
-            # Check if the frame is valid
+            # Check if the frame is invalid
             if frame is None or frame.size == 0:
-                print(cap.get(cv2.CAP_PROP_POS_MSEC))
-                print(frame_counters[capture_index])
+                print("Frame is invalid")
 
                 # If we're within the first 5 seconds, return a black frame
-                if cap.get(cv2.CAP_PROP_POS_MSEC) == 0.0 and frame_counters[capture_index]< 5*24:
+                if frame_counters[capture_index]< 5*24:
+                    
                     # Increment frame counter for this capture
                     frame_counters[capture_index] += 1
 
-                    print(f"Returning black frame due to missing data.")
+                    print(f"Returning black frame due to missing data in the first five seconds of the video.")
                     
                     return black_frame, capture_index, frame_counters[capture_index]  # Return capture index and frame count as-is
 
                 # Switch to the next capture if we have processed enough frames
-                print(f"Warning: Frame is empty or could not be read. Switching to the next capture.")
+                print(f"Warning: Frame is empty or could not be read because we are beyond the length of the capture. Switching to the next capture.")
 
                 # Increment capture index for this camera
                 capture_indices[capture_index] += 1  # Adjust based on the current camera index
@@ -316,7 +315,7 @@ class Video_Functions():
                         corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
                         return corrected_frame.get(), capture_index, frame_counters[capture_index]  # Return the processed frame and updated index
                     else:
-                        print(f"No valid frame in the next capture.")
+                        print(f"The first frame from the next capture is invalid. Returning a black frame.")
                         return black_frame, capture_index, frame_counters[capture_index]  # If the next frame is also invalid, return black frame
 
                 else:
@@ -342,6 +341,8 @@ class Video_Functions():
         current_caps = [captures[0] for captures in captures_list]
         capture_indices = [0] * len(captures_list)  # Track which file in each list is being used
         frame_rates = [cap.get(cv2.CAP_PROP_FPS) for cap in current_caps]
+
+        print("Current captures:", current_caps)
         
         # Initialize counters to track frames processed per capture
         frame_counters = [0] * len(captures_list)
@@ -365,17 +366,19 @@ class Video_Functions():
         # Process frames in parallel
         count = 0
         seconds = 0
-
         print(LENGTH)
-        pbar = tqdm(total = LENGTH*frame_rates[0])
+        #pbar = tqdm(total = LENGTH*frame_rates[0])
 
         while seconds <= LENGTH:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 # Create a list of arguments for each camera's processing
-                args = [(current_caps[i], homo_mats[i], black_frame, i, capture_indices, frame_counters) for i in range(len(current_caps))]
+                args = [(i, current_caps[i], homo_mats[i], black_frame, i, capture_indices, frame_counters) for i in range(len(current_caps))]
 
                 # Process frames concurrently
                 results = list(executor.map(lambda p: process_frame(*p), args))
+
+            print("NEW FRAME")
+            print(results)
 
             # Collect corrected frames and update current captures
             corrected_frames = []
@@ -390,9 +393,169 @@ class Video_Functions():
             count += 1 
             seconds = count / frame_rates[0]
 
-            pbar.update(1)
+            #pbar.update(1)
 
-        pbar.close()
+        #pbar.close()
+
+        # Release all captures and writer objects at the end
+        for cap in current_caps:
+            if cap:
+                cap.release()
+        out.release()
+        cv2.destroyAllWindows()
+
+    def orthomosaicing_test(self, captures_list, time_offsets, homo_mats, out_vid_dn, OUT_NAME, SPEED, START_TIME, LENGTH, COMPRESSION):
+        # Describe shape
+        final_shape = [2438, 4000]
+        compressed_shape = (int(final_shape[0] / COMPRESSION), int(final_shape[1] / COMPRESSION))
+        output_shape = (compressed_shape[0] * 4, compressed_shape[1])
+
+        print("out Shape: ", output_shape)
+
+        # Set up video writer
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        out = cv2.VideoWriter(out_vid_dn + "/" + OUT_NAME, fourcc, captures_list[0][0].get(cv2.CAP_PROP_FPS) * SPEED, output_shape)
+
+        # Function to process each frame
+        def process_frame(camera, cap, homo_mat, black_frame, capture_index, capture_indices, frame_counters, dt_ms, times):
+            
+            ret, frame = cap.read() #advance the frame
+
+            # Check if the frame is invalid
+            if frame is None or frame.size == 0:
+                cap.set(cv2.CAP_PROP_POS_MSEC, times[camera])
+                ret, frame = cap.read()
+                print("Frame is invalid")
+
+                # If we're within the first 5 seconds, return a black frame
+                if times[camera] < 5000:
+                    
+                    # Increment frame counter for this capture
+                    frame_counters[capture_index] += 1
+
+                    print(f"Returning black frame due to missing data in the first five seconds of the video.")
+                    time = times[camera] + dt_ms #iterate timestep anyways FOR FRAMES THAT ARE CORRUPT!!!
+                    
+                    return black_frame, capture_index, frame_counters[capture_index], time   # Return capture index and frame count as-is
+
+                # Switch to the next capture if we have processed enough frames
+                print(f"Warning: Frame is empty or could not be read because we are beyond the length of the capture. Switching to the next capture.")
+
+                # Increment capture index for this camera
+                capture_indices[capture_index] += 1  # Adjust based on the current camera index
+                
+
+                # Check if there are more captures available for this camera
+                if capture_indices[capture_index] < len(captures_list[capture_index]):
+                    # Load the next capture
+                    next_capture = captures_list[capture_index][capture_indices[capture_index]]
+                    current_caps[capture_index] = next_capture  # Update the global capture list
+                    next_ret, next_frame = current_caps[capture_index].read()
+                    frame_counters[capture_index] = 0  # Reset frame counter when switching captures
+                    time = 0
+
+                    if next_ret and next_frame is not None:
+                        # If the next frame is valid
+                        uframe = cv2.UMat(next_frame)  # Convert frame to UMat for processing
+                        corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)  # Apply homography
+                        corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
+                        time = time + dt_ms
+                        return corrected_frame.get(), capture_index, frame_counters[capture_index], time  # Return the processed frame and updated index
+                    else:
+                        print(f"The first frame from the next capture is invalid. Returning a black frame.")
+                        time = time + dt_ms
+                        return black_frame, capture_index, frame_counters[capture_index], time  # If the next frame is also invalid, return black frame #FOR FIRST FRAMES IN A NEW CAPTURE THAT ARE CORRUPT
+
+                else:
+                    print(f"No more captures left for camera {capture_index}.")
+                    time = 0
+                    return black_frame, capture_index, frame_counters[capture_index], time  # If no more captures, return black frame #FOR FRAMES AFTER THE LAST CAPTURE IS OVER
+
+            # If the frame is valid, proceed to process it
+            uframe = cv2.UMat(frame)  # Convert frame to UMat for processing
+            corrected_frame = cv2.warpPerspective(uframe, homo_mat, final_shape)  # Apply homography
+            corrected_frame = cv2.resize(corrected_frame, compressed_shape)  # Resize frame
+
+            # Increment frame counter for this capture
+            frame_counters[capture_index] += 1
+
+            time = cap.get(cv2.CAP_PROP_POS_MSEC) + dt_ms
+
+            return corrected_frame.get(), capture_index, frame_counters[capture_index], time  # Return the processed frame and unchanged index FOR FRAMES THAT RAN CORRECTLY
+
+        # Ensure the black frame matches the dimensions and type of the video frames
+        def create_black_frame(reference_frame):
+            black_frame = np.zeros(reference_frame.shape, dtype=reference_frame.dtype)
+            return black_frame
+
+        # Initialize variables for tracking current capture and file
+        current_caps = [captures[0] for captures in captures_list]
+        capture_indices = [0] * len(captures_list)  # Track which file in each list is being used
+        frame_rates = [cap.get(cv2.CAP_PROP_FPS) for cap in current_caps]
+
+        print("Current captures:", current_caps)
+        
+        # Initialize counters to track frames processed per capture
+        frame_counters = [0] * len(captures_list)
+
+        # Get first valid frame to determine dimensions and data type for black frame
+        ret, first_frame = current_caps[0].read()
+        if not ret or first_frame is None:
+            print("Error: Could not read the first frame.")
+            sys.exit()
+        first_frame_resized = cv2.resize(first_frame, compressed_shape)
+        black_frame = create_black_frame(first_frame_resized)  # Black frame now matches other frames
+
+        # Reset start position after reading the first frame
+        start_time = START_TIME * 1000
+        for i, cap in enumerate(current_caps):
+            cap.set(cv2.CAP_PROP_POS_MSEC, start_time + time_offsets[i])
+
+        # Initialize processed frames count
+        frames_processed = [0] * len(captures_list)
+
+        # Process frames in parallel
+        count = 0
+        seconds = 0
+        print(LENGTH)
+    
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        dt_ms = 1000/fps
+        times = [x + start_time for x in time_offsets] 
+
+        while seconds <= LENGTH:
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # Create a list of arguments for each camera's processing
+                args = [(i, current_caps[i], homo_mats[i], black_frame, i, capture_indices, frame_counters, dt_ms, times) for i in range(len(current_caps))]
+
+                # Process frames concurrently
+                results = list(executor.map(lambda p: process_frame(*p), args))
+
+            # Collect corrected frames and update current captures
+            corrected_frames = []
+            times = []
+            for corrected_frame, index, frame_counter, time in results:
+                corrected_frames.append(corrected_frame)
+            
+                times.append(time)
+            
+            hours, rem = divmod(times[0]/1000, 3600)
+            minutes, seconds = divmod(rem, 60)
+
+            print(f"{int(hours):02}:{int(minutes):02}:{seconds:06.3f}")
+
+            # If there are valid frames, merge and write them to the output video
+            if corrected_frames:
+                merged = cv2.hconcat(corrected_frames)
+                out.write(merged)
+
+            count += 1 
+            seconds = count / frame_rates[0]
+
+            #pbar.update(1)
+
+        #pbar.close()
 
         # Release all captures and writer objects at the end
         for cap in current_caps:

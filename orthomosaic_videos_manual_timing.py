@@ -48,7 +48,7 @@ class orthomosaic_video:
         #Generate time offsets using the first video from each camera
         self.time_offsets = [0, 0+off_1, 0+off_1+off_2, 0+off_1+off_2+off_3]
         print("Time offsets for video streams:")
-        print(self.time_offsets)
+        print(self.time_offsets) 
 
     
     def _run_homography(self):
@@ -105,7 +105,7 @@ class orthomosaic_video:
 
         print(self.captures_lists)
 
-        self.vf.orthomosaicing(self.captures_lists, self.time_offsets, self.homo_mats, self.out_vid_dir, self.out_name, self.speed, self.start_time, self.length, self.compression)
+        self.vf.orthomosaicing_test(self.captures_lists, self.time_offsets, self.homo_mats, self.out_vid_dir, self.out_name, self.speed, self.start_time, self.length, self.compression)
 
         # End measuring time
         end_time = time.time()
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     out_name = exp_name + "_test.mp4"
 
     #initialize orthomosaic class
-    ortho = orthomosaic_video(gcps_filenames, video_dir, out_vid_dir, out_name, offsets_list, compression= 2.5, speed = 1, start_time = 700 , length = 30)
+    ortho = orthomosaic_video(gcps_filenames, video_dir, out_vid_dir, out_name, offsets_list, compression= 2.5, speed = 1, start_time = 700 , length = 10)
 
     ortho.run_orthomosaic()
 
