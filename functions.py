@@ -454,6 +454,8 @@ class Video_Functions():
                     frame_counters[capture_index] = 0  # Reset frame counter when switching captures
                     time = 0
 
+                    print("New capture started: ", current_caps)
+
                     if next_ret and next_frame is not None:
                         # If the next frame is valid
                         uframe = cv2.UMat(next_frame)  # Convert frame to UMat for processing
