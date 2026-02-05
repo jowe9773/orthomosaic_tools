@@ -5,7 +5,7 @@ import os
 import time
 import asyncio
 import cv2
-from functions import File_Functions, Video_Functions, Audio_Functions
+from old_scripts.functions import File_Functions, Video_Functions, Audio_Functions
 
 
 if __name__ == "__main__":

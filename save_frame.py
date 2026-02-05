@@ -1,9 +1,6 @@
 import cv2
-from functions import File_Functions
 
-ff = File_Functions()
-
-video_path = ff.load_fn("Select video to save a file from")
+video_path = ""
 
 expeiment_name = video_path.split(".")[0].split("/")[-1]
 
@@ -21,7 +18,6 @@ ret, frame = cap.read()
 if ret:
     # Save the frame as an image
     out_path = "C:/Users/jwelsh/Image Annotation/frames_for_GCP_selection"
-    #out_path = ff.load_dn("select place to store images")
     output_path = out_path + "/" + "20240716_3" + ".jpg"
     cv2.imwrite(output_path, frame)
     print(f"Frame {frame_number} saved to {output_path}")

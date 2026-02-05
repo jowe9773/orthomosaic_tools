@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import time
 import cv2
-from functions import File_Functions, Video_Functions, Audio_Functions
+from old_scripts.functions import File_Functions, Video_Functions, Audio_Functions
 
 
 #define a orthomosaic video function that will process a single experiment

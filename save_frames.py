@@ -1,48 +1,53 @@
-"""This script will take a set videofiles and extract and save files from them"""
-
-from video_processor import VideoProcessor
-from collections import deque
 import cv2
-from pathlib import Path
+import os
 
+def save_frames(video_path, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    exp_name = output_dir.split("/")[-1]
 
-if __name__ == "__main__":
+    cap = cv2.VideoCapture(video_path)
 
-    main_path = "C:/Users/jwelsh/Image Annotation/Frames for target annotation/"
-    
-    videofiles = [
-                  main_path + "2.0/GX010134.MP4",
-                  main_path + "2.0/GX010176.MP4",
-                  main_path + "4.0/GX010165.MP4",
-                  main_path + "4.0/GX010182.MP4",
-                  main_path + "4.0/GX010225.MP4",
-                  main_path + "4.0/GX020225.MP4"]
+    # ---- NEW: skip first 3000 frames ----
+    frame_idx = 4080 
 
-    out_path = main_path + "Frames"
+    save_remaining = 0
+    total_saved = 0
+    MAX_SAVED = 125
+    jump = 48 #2 seconds between frames
 
-    for i, videofile in enumerate(videofiles): #iterate through the list of videofiles
+    while total_saved < MAX_SAVED:
+        # ---- NEW: jump to the start of the next jump-frame block ----
+        next_trigger = frame_idx + (jump - (frame_idx % jump))
+        cap.set(cv2.CAP_PROP_POS_FRAMES, next_trigger)
+        frame_idx = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
 
-        video_name = Path(videofile).stem
-        print(video_name)
-        
-        video = VideoProcessor(videofile) #open the file as a videoprocessor object
+        save_remaining = 1  # start a burst
 
-        rolling_buffer = deque()
-        n = 500 #choose the number of frames between each save
-        frames_saved = 0 #start counter of the number of frames saved
-
-        
-
-        for frame, index in video.frames():
-            if index % n != 0:
-                continue  # skip frames that are not every nth
-
-            # Save the frame as an imagex
-            output_path = out_path + "/" + video_name + "_" + str(index) + ".jpg"
-            cv2.imwrite(output_path, frame)
-            print(f"Frame {index} saved to {output_path}")
-            frames_saved += 1
-            print(frames_saved)
-
-            if frames_saved >= 32:
+        # read & save 5 frames in a row
+        while save_remaining > 0 and total_saved < MAX_SAVED:
+            ret, frame = cap.read()
+            if not ret:
                 break
+
+            out_path = os.path.join(
+                output_dir, f"{exp_name}_frame_{total_saved:03d}_src_{frame_idx:06d}.png"
+            )
+            cv2.imwrite(out_path, frame)
+
+            save_remaining -= 1
+            total_saved += 1
+            frame_idx += 24  # move forward by 24 during the burst
+            print(frame_idx)
+
+    cap.release()
+    print(f"Saved {total_saved} frames.")
+
+# make list of videos to extract frames from
+exps = ["20240529_exp2", "20240606_exp1", "20240619_exp1", "20240621_exp1", "20240627_exp1", "20240628_exp1", "20240708_exp1", "20240714_exp1", "20240716_exp1","20240717_exp1", "20240718_exp1", "20240722_exp1", "20240724_exp1", "20240801_exp1", "20240805_exp1"]
+exps = ["20240724_exp1"]
+#exps = ["20240729_exp1"]
+
+for i, exp in enumerate(exps):
+    video_path = f"F:/Videos/{exp}_goprodata_full.mp4"
+    output_dir = f"F:/Frames/{exp}"
+    save_frames(video_path, output_dir)

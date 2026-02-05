@@ -6,10 +6,7 @@ import csv
 import numpy as np
 from collections import deque
 from tqdm import tqdm
-import concurrent.futures
-import time
 import cv2
-from pprint import pprint
 
 
 
@@ -88,6 +85,7 @@ class OrthomosaicTools():
             self.matrix_by_cam[f"{cam}"] = matrix
 
     def _set_start_times(self, timing):
+        self.timing = timing
         # NOW SET THE START TIMES FOR EACH CAMERA ENSURING THAT THEY ARE ALL >= 0
         start_time = timing[0]*1000
         start_times_list = [start_time, start_time+timing[2], start_time+timing[2]+timing[3], start_time+timing[2]+timing[3]+timing[4]]
@@ -99,6 +97,8 @@ class OrthomosaicTools():
             self.start_times[f"{i+1}"] = time
 
     def _set_video_files_by_camera(self, video_dir):
+
+        self.exp_name = video_dir.split("/")[-1]
         self.video_files_by_camera = {}
         for i in range(4):  #for each camera, dive down into the camera directory and grab a list of filepaths for all of the files within, and sort them in alphanumeric order
             camera_dir = Path(video_dir + f"/Cam{i+1}")
@@ -114,8 +114,8 @@ class OrthomosaicTools():
 
         self.processed_frame_counter = 0
 
-        self.total_frames = int(fps*timing[1]) #set a variable that will be the total number of frames that will be processed
-        self.pbar = tqdm(total=self.total_frames, ncols=100, smoothing = 0, colour= "green", desc="Processing Frames")   
+        self.total_frames = int(fps*self.timing[1]) #set a variable that will be the total number of frames that will be processed
+        self.pbar = tqdm(total=self.total_frames, ncols=100, smoothing = 0, colour= "green", desc=f"Processing {self.exp_name}")   
     
     def _create_black_frame(self):
         cap = cv2.VideoCapture(self.video_files_by_camera["1"][0])
@@ -124,18 +124,18 @@ class OrthomosaicTools():
             self.black_frame = np.zeros_like(frame)
         cap.release() #release capture to clean up
 
-    def orthomosaic_experiment(self, gcps_dir, video_dir, timing):
-        ortho._set_gcps(gcps_dir)
+    def orthomosaic_experiment(self, gcps_dir, video_dir, timing, output_filepath):
+        self._set_gcps(gcps_dir)
 
-        ortho._find_homography()
+        self._find_homography()
 
-        ortho._set_start_times(timing)
+        self._set_start_times(timing)
 
-        ortho._set_video_files_by_camera(video_dir)
+        self._set_video_files_by_camera(video_dir)
         
-        ortho._create_black_frame()
+        self._create_black_frame()
 
-        ortho._prep_counter()
+        self._prep_counter()
 
         # Open first video for each camera
         caps = {}
@@ -178,7 +178,9 @@ class OrthomosaicTools():
                 while True:
                     if cap is None: # No more files for this camera: use black frame
                         frame_to_use = self.black_frame
+                        print(f"No more captures for cam{cam}")
                         break
+                        
 
                     ret, frame = cap.read() #read the frame
 
@@ -187,13 +189,14 @@ class OrthomosaicTools():
                         frame_to_use = frame
                         break
 
-                    
                     temp_fail_counter[cam] += 1 #if frame is not valid, then we start the temporary fail counter
 
                     if temp_fail_counter[cam] >= MAX_TEMP_FAILS: #if we are above the max number of sequential frames that cause problems
+                        print("Capture hasnt had a valid frame in 5 seconds, checking for next capture")
                         cap.release()                               #release the capture
 
                         if self.video_queues[cam]:                                   # if there are more videos in the queue
+                            print("Starting nect capture")
                             cap = cv2.VideoCapture(self.video_queues[cam].popleft()) # open the next capture for that cameras
                             caps[cam] = cap
                             temp_fail_counter[cam] = 0                          # reset the fail clock
@@ -231,7 +234,8 @@ class OrthomosaicTools():
 
         #close captures
         for camera, cap in caps.items():
-            cap.release()
+            if cap is not None:
+                cap.release()
 
         out.release()
         cv2.destroyAllWindows()
@@ -240,17 +244,17 @@ class OrthomosaicTools():
 if __name__ == "__main__":
 
     # CHOOSE DIRECTORIES CONTAINING VIDEO AND GCPS DATA
-    video_dir = "G:/video_data/20240627_exp1_goprodata"
-    gcps_dir = "C:/Users/jwelsh/Image Annotation/annotated_gcps/20240627"
+    video_dir = "G:/video_data/20240603_exp1_goprodata"
+    gcps_dir = "C:/Users/jwelsh/Image Annotation/annotated_gcps/20240603"
 
     # SET AN OUTPUT DIRECTORY
     output_dir = "C:/Users/jwelsh/Image Annotation"
-    output_name = "20240627_exp1_text.mp4"
+    output_name = "20240603_exp1_test.mp4"
     output_filepath = output_dir + "/" + output_name
 
     # MAKE A LIST CONTAINING ALL TIMING INFO (Start Time [s], Length [s], Offset 1 [ms], Offset 2 [ms], Offset 3 [ms])
-    timing = [300, 60, -5966, 100, 4706]
+    timing = [690, 60, 9750, 6350, 7500]
 
     ortho = OrthomosaicTools()
 
-    ortho.orthomosaic_experiment(gcps_dir= gcps_dir, video_dir= video_dir, timing= timing)
+    ortho.orthomosaic_experiment(gcps_dir= gcps_dir, video_dir= video_dir, timing= timing, output_filepath=output_filepath)

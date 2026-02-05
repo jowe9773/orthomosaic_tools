@@ -7,7 +7,7 @@ import time
 import asyncio
 from pprint import pprint
 import cv2
-from functions_chunks import File_Functions, Video_Functions, Audio_Functions
+from old_scripts.functions_chunks import File_Functions, Video_Functions, Audio_Functions
 
 
 if __name__ == "__main__":
